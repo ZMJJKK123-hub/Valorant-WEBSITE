@@ -290,15 +290,19 @@ if __name__ == "__main__":
         layout='wide',
         initial_sidebar_state='expanded'
     )
-    register_user()
-    load_user()
+    if "logged_in"  not in st.session_state:
+        st.session_state.logged_in = False
 
-    # if user_name and user_password:
-    #     with st.sidebar.expander(f"当前用户是{user_name}",expanded=False):
-    #         if st.button("退出当前账户",key=f'btn_{user_name}'):
-    #             user_name=None
-    #             user_password=None
-    #             st.rerun()
+    if not st.session_state.logged_in:
+        register_user()
+        load_user()
+    else:
+        with st.sidebar.expander(f"当前用户是{st.session_state.current_user}"):
+            if st.button("退出账号",key=f'btn_{st.session_state.current_user}'):
+                st.session_state.logged_in = False
+                del st.session_state.current_user
+
+
 
 
     st.markdown('<div class="main-header">VALORANT 游戏指南</div>', unsafe_allow_html=True)
