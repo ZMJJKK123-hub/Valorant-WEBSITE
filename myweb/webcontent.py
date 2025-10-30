@@ -2,11 +2,10 @@ import streamlit as st
 import os
 from PIL import Image
 import pandas as pd
-
-#streamlit run webcontent.py
-
-
-# 自定义CSS样式
+import datetime
+from datetime import datetime
+import hashlib
+import json
 st.markdown("""
 <style>
     .main-header {
@@ -85,7 +84,30 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# 统一图片尺寸的函数
+json_file = "user_data.json"
+if not os.path.exists(json_file):
+    print(f"📁 {json_file} 不存在，自动创建空文件...")
+    try:
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump({}, f, ensure_ascii=False, indent=2)
+        print("✅ 已自动创建空的用户数据文件")
+        user_data = {}
+    except Exception as e:
+        print(f"❌ 创建文件失败: {e}")
+        user_data = {}
+else:
+        # 文件存在，正常读取
+    try:
+        with open(json_file, 'r', encoding='utf-8') as f:
+            user_data = json.load(f)
+            print("✅ 成功加载用户数据")
+    except json.JSONDecodeError:
+        print("❌ JSON文件格式错误，返回空字典")
+        user_data = {}
+    except Exception as e:
+        print(f"❌ 读取文件失败: {e}")
+        user_data = {}
+
 def resize_hero_image(image_path, target_size=(300, 400)):
     try:
         image = Image.open(image_path)
@@ -107,6 +129,63 @@ def resize_hero_image(image_path, target_size=(300, 400)):
         st.error(f"处理图片时出错: {e}")
         return None
 
+
+def save_user_data(data):
+    """保存用户数据到JSON文件"""
+    try:
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        st.error(f"保存数据失败: {e}")
+        return False
+
+
+def register_user():
+    """用户注册函数"""
+    with st.sidebar.expander("用户注册", expanded=False):
+        register_user_name = st.text_input("请输入你的用户名：", key="register_user_name")
+        register_user_password = st.text_input("请输入你的密码：", type="password", key="register_user_password")
+
+        if st.button("注册", key="register_button"):
+            if register_user_name and register_user_password:
+                if register_user_name not in user_data:
+                    # 注册新用户
+                    user_data[register_user_name] = register_user_password
+
+                    # 保存到JSON文件
+                    if save_user_data(user_data):
+                        st.success("注册成功，现在可以登录啦！")
+                        st.rerun()
+                    else:
+                        st.error("注册失败，请重试！")
+                else:
+                    st.error("用户名已经存在，请换一个用户名！")
+            else:
+                st.warning("请输入有效信息！")
+
+
+def load_user():
+    """用户登录函数"""
+    with st.sidebar.expander("用户登录", expanded=False):
+        load_user_name = st.text_input("请输入你的用户名：", key="load_user_name")
+        load_user_password = st.text_input("请输入你的密码：", type="password", key="load_user_password")
+
+        if st.button("登录", key="login_button"):
+            if load_user_name and load_user_password:
+
+                if load_user_name in user_data and load_user_password == user_data[load_user_name]:
+                    # 登录成功，保存登录状态到session_state
+                    st.session_state.logged_in = True
+                    st.session_state.current_user = load_user_name
+                    st.success("登录成功！享受网站吧！")
+                    st.rerun()
+                else:
+                    st.error("用户名或密码错误！若第一次登录，请先注册！")
+            else:
+                st.warning("请输入用户名和密码！")
+
+
 def get_images(directory_path):
     image_files=[]
     for root, dirs, files in os.walk(directory_path):
@@ -115,8 +194,6 @@ def get_images(directory_path):
             image_files.append(file_path)
     return image_files
 
-
-# 清理 KAST 列数据
 def clean_kast_data(df):
     # 方法1: 分割字符串并清理
     if df['KAST'].dtype == 'object':
@@ -135,16 +212,10 @@ def clean_kast_data(df):
         return cleaned_values
     return df['KAST']
 
-
-# 使用清理后的数据
-
-
-
 def resize_images(image_files_path,width,height):
     original_image = Image.open(image_files_path)
     new_image = original_image.resize((width,height))
     return new_image
-
 
 def find_name_of_image(target_name,lst):
     for item in lst:
@@ -152,7 +223,6 @@ def find_name_of_image(target_name,lst):
             return item
     else:
         return None
-
 
 def guns_info(name, text):
     col1, col2 = st.columns([1, 4])
@@ -167,7 +237,6 @@ def guns_info(name, text):
         st.image(f'guns\\{name}.png', width=400)
     with col2:
         st.markdown(f'<div class="card">{text}</div>', unsafe_allow_html=True)
-
 
 def jump_to_guns(name):
     if st.button(f'🔍 查看{name}数据', key=name):
@@ -189,13 +258,11 @@ def first_duel_heroes_info(name,text):
     st.image(f'heroes\\duel\\first_duel\\{name}.png', width=400)
     st.markdown(f'''{text}''')
 
-
 def second_duel_heroes_info(name,text):
     if st.button('🔙返回上一页', key='home'):
         st.session_state.current = 'home'
     st.image(f'heroes\\duel\\second_duel\\{name}.png', width=400)
     st.markdown(f'''{text}''')
-
 
 def item_heroes_info(name,text):
     if st.button('🔙返回上一页', key='home'):
@@ -203,13 +270,11 @@ def item_heroes_info(name,text):
     st.image(f'heroes\\item\\{name}.png', width=400)
     st.markdown(f'''{text}''')
 
-
 def controller_heroes_info(name,text):
     if st.button('🔙返回上一页', key='home'):
         st.session_state.current = 'home'
     st.image(f'heroes\\controller\\{name}.png', width=400)
     st.markdown(f'''{text}''')
-
 
 def sentinel_heroes_info(name,text):
     if st.button('🔙返回上一页', key='home'):
@@ -225,6 +290,16 @@ if __name__ == "__main__":
         layout='wide',
         initial_sidebar_state='expanded'
     )
+    register_user()
+    load_user()
+
+    # if user_name and user_password:
+    #     with st.sidebar.expander(f"当前用户是{user_name}",expanded=False):
+    #         if st.button("退出当前账户",key=f'btn_{user_name}'):
+    #             user_name=None
+    #             user_password=None
+    #             st.rerun()
+
 
     st.markdown('<div class="main-header">VALORANT 游戏指南</div>', unsafe_allow_html=True)
 
@@ -237,13 +312,21 @@ if __name__ == "__main__":
     if 'heroes' not in st.session_state:
         st.session_state.heroes = None
 
-
+    if 'comments' not in st.session_state:
+        st.session_state.comments = {
+            tab: [] for tab in
+            [
+            '👋 关于我们', '📋 官方介绍', '🎮 序章：游戏的基本认识',
+            '💰 第一章：经济系统介绍', '🔫 第二章：枪械系统介绍',
+            '🦸 第三章：英雄角色介绍', '🗺️ 第四章：地图基本介绍',
+            '⚡ 第五章：英雄进阶技巧', '🏆 第六章：职业比赛学习',
+            '🚀 第七章：游戏进阶技巧', '📊 附录：职业选手数据'
+            ]
+        }
 
     if st.session_state.current == 'home':
 
-
         with st.sidebar:
-
             st.title='零基础开始的导航菜单'
             select_tab = st.radio(
                 "选择学习章节",
@@ -290,6 +373,36 @@ if __name__ == "__main__":
             st.markdown("---")
             st.markdown("### 🎯 使用指南")
             st.info("💡 使用左侧导航菜单选择学习内容，从基础到进阶，循序渐进地掌握游戏技巧！")
+
+            st.markdown("---")
+            st.markdown("### 💬 评论区")
+            with st.form(key=f'comment_form_{select_tab}'):
+                comment = st.text_area("留下您的评论", key=f'comment_input_{select_tab}')
+                submit_button = st.form_submit_button("提交评论")
+                if submit_button and comment:
+                    #写出用户名
+                    if 'username' in st.session_state:
+                        user = st.session_state.username
+                    else:
+                        user = "匿名用户"
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+                    st.session_state.comments[select_tab].append({
+                        "user": user,
+                        "text": comment,
+                        "time": timestamp
+                    })
+
+            # 显示评论
+            if st.session_state.comments[select_tab]:
+                st.markdown("#### 📝 历史评论")
+                for idx, comment in enumerate(st.session_state.comments[select_tab]):
+                    with st.expander(f"{comment['user']} - {comment['time']}", expanded=False):
+                        st.write(comment['text'])
+                        if st.button(f"删除", key=f"delete_{select_tab}_{idx}"):
+                            del st.session_state.comments[select_tab][idx]
+                            st.rerun()
+            else:
+                st.info("暂无评论，快来留下第一条评论吧！")
 
 
 
