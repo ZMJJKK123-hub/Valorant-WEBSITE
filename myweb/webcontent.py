@@ -6,6 +6,8 @@ import datetime
 from datetime import datetime
 import hashlib
 import json
+import time
+import uuid
 st.markdown("""
 <style>
     .main-header {
@@ -183,7 +185,7 @@ def load_user():
                 else:
                     st.error("用户名或密码错误！若第一次登录，请先注册！")
             else:
-                st.warning("请输入用户名和密码！")
+                st.warning("请输入正确的用户名和密码！")
 
 
 def get_images(directory_path):
@@ -282,6 +284,127 @@ def sentinel_heroes_info(name,text):
     st.image(f'heroes\\sentinel\\{name}.png', width=400)
     st.markdown(f'''{text}''')
 
+def comment_area():
+
+    st.session_state.form_counter += 1
+    form_key = f'comment_form_{select_tab}_{st.session_state.form_counter}'
+    input_key = f'comment_input_{select_tab}_{st.session_state.form_counter}'
+    upload_key = f'comment_upload_{select_tab}_{st.session_state.form_counter}'
+
+    st.markdown("---")
+    st.markdown("### 💬 评论区")
+    with st.form(key=form_key):
+        comment = st.text_area("留下您的评论", key=input_key)
+        uploaded_file=st.file_uploader(
+        "上传图片",
+        type = ['png', 'jpg', 'jpeg', 'gif'],
+        key = upload_key,
+        help = "支持 PNG、JPG、JPEG、GIF 格式，最大 200MB"
+        )
+        if uploaded_file is not None:
+            # 显示文件信息
+            file_details = {
+                "文件名": uploaded_file.name,
+                "文件类型": uploaded_file.type,
+                "文件大小": f"{uploaded_file.size / 1024:.2f} KB"
+            }
+            st.write("已选择文件：", file_details)
+
+            # 如果是图片，显示预览
+            if uploaded_file.type.startswith('image/'):
+                st.image(uploaded_file, caption="图片预览", width=300)
+        submit_button = st.form_submit_button("提交评论")
+        if submit_button and (comment or uploaded_file):
+            # 写出用户名
+            if 'current_user' in st.session_state:
+                user = st.session_state.current_user
+            else:
+                user = "匿名用户"
+            image_filename = None
+            if uploaded_file is not None:
+                try:
+                    # 生成唯一的图片文件名
+                    file_extension = uploaded_file.name.split('.')[-1].lower()
+                    unique_id = str(uuid.uuid4())[:8]
+                    image_filename = f"{select_tab}_{user}_{unique_id}.{file_extension}"
+                    image_path = os.path.join("comment_images", image_filename)
+
+                    os.makedirs("comment_images", exist_ok=True)
+
+                    # 保存图片
+                    with open(image_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+
+                    st.success(f"图片上传成功！")
+
+                except Exception as e:
+                    st.error(f"图片上传失败: {e}")
+                    image_filename = None
+
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+            st.session_state.comments[select_tab].append({
+                "user": user,
+                "text": comment.strip(),
+                "image": image_filename,  # 存储图片文件名
+                "time": timestamp,
+                "id": f"{select_tab}_{len(st.session_state.comments[select_tab])}"
+            })
+            st.success("评论提交成功！")
+            st.rerun()
+
+    # 显示评论
+    # comments = st.session_state.comments.get(select_tab, [])
+    #
+    #
+    #
+    # st.markdown("#### 📝 历史评论")
+    # if not comments:
+    #     st.info("暂无评论，快来留下第一条评论吧！")
+    #     return
+    #
+    # for idx, comment in enumerate(comments):
+    #     # 为每个评论创建唯一key
+    #     expander_key = f"expander_{comment['id']}_{st.session_state.form_counter}"
+    #
+    #     with st.expander(f"💬 {comment['user']} - {comment['time']}", expanded=False, key=expander_key):
+    #
+    #         # 显示图片（如果有）
+    #         if comment.get('image'):
+    #             image_path = os.path.join("comment_images", comment['image'])
+    #             if os.path.exists(image_path):
+    #                 st.image(image_path, use_container_width=True, caption="用户上传的图片")
+    #             else:
+    #                 st.warning("图片文件不存在")
+    #
+    #         # 显示文本评论
+    #         if comment['text']:
+    #             st.write(comment['text'])
+    #         elif comment.get('image'):
+    #             st.write("【图片评论】")
+    #         else:
+    #             st.write("【空评论】")
+    #
+    #         # 删除按钮
+    #         delete_key = f"delete_{comment['id']}_{st.session_state.form_counter}"
+    #         if st.button("🗑️ 删除", key=delete_key):
+    #             # 只有评论作者或管理员可以删除
+    #             if (st.session_state.logged_in and
+    #                     st.session_state.current_user and
+    #                     (st.session_state.current_user == comment['user'] or
+    #                      st.session_state.current_user == 'admin')):
+    #
+    #                 # 删除关联的图片文件
+    #                 if comment.get('image'):
+    #                     image_path = os.path.join("comment_images", comment['image'])
+    #                     if os.path.exists(image_path):
+    #                         os.remove(image_path)
+    #
+    #                 # 删除评论
+    #                 st.session_state.comments[select_tab].pop(idx)
+    #                 st.rerun()
+    #             else:
+    #                 st.warning("您没有删除此评论的权限")
+
 if __name__ == "__main__":
 
     st.set_page_config(
@@ -290,8 +413,12 @@ if __name__ == "__main__":
         layout='wide',
         initial_sidebar_state='expanded'
     )
+
     if "logged_in"  not in st.session_state:
         st.session_state.logged_in = False
+
+    if "current_user" not in st.session_state:
+        st.session_state.current_user=None
 
     if not st.session_state.logged_in:
         register_user()
@@ -302,8 +429,8 @@ if __name__ == "__main__":
                 st.session_state.logged_in = False
                 del st.session_state.current_user
 
-
-
+    if not os.path.exists("comment_images"):
+        os.makedirs("comment_images")
 
     st.markdown('<div class="main-header">VALORANT 游戏指南</div>', unsafe_allow_html=True)
 
@@ -315,6 +442,9 @@ if __name__ == "__main__":
 
     if 'heroes' not in st.session_state:
         st.session_state.heroes = None
+
+    # if 'form_counter' not in st.session_state:
+    st.session_state.form_counter = 0
 
     if 'comments' not in st.session_state:
         st.session_state.comments = {
@@ -374,39 +504,7 @@ if __name__ == "__main__":
                         </div>
                         """, unsafe_allow_html=True)
 
-            st.markdown("---")
-            st.markdown("### 🎯 使用指南")
-            st.info("💡 使用左侧导航菜单选择学习内容，从基础到进阶，循序渐进地掌握游戏技巧！")
-
-            st.markdown("---")
-            st.markdown("### 💬 评论区")
-            with st.form(key=f'comment_form_{select_tab}'):
-                comment = st.text_area("留下您的评论", key=f'comment_input_{select_tab}')
-                submit_button = st.form_submit_button("提交评论")
-                if submit_button and comment:
-                    #写出用户名
-                    if 'username' in st.session_state:
-                        user = st.session_state.username
-                    else:
-                        user = "匿名用户"
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-                    st.session_state.comments[select_tab].append({
-                        "user": user,
-                        "text": comment,
-                        "time": timestamp
-                    })
-
-            # 显示评论
-            if st.session_state.comments[select_tab]:
-                st.markdown("#### 📝 历史评论")
-                for idx, comment in enumerate(st.session_state.comments[select_tab]):
-                    with st.expander(f"{comment['user']} - {comment['time']}", expanded=False):
-                        st.write(comment['text'])
-                        if st.button(f"删除", key=f"delete_{select_tab}_{idx}"):
-                            del st.session_state.comments[select_tab][idx]
-                            st.rerun()
-            else:
-                st.info("暂无评论，快来留下第一条评论吧！")
+            comment_area()
 
 
 
@@ -481,7 +579,7 @@ if __name__ == "__main__":
 
                             """, unsafe_allow_html=True)
 
-
+            comment_area()
 
 
 
@@ -593,7 +691,7 @@ if __name__ == "__main__":
 
                         """)
 
-
+            comment_area()
 
         elif select_tab == '💰 第一章：经济系统介绍':
 
@@ -964,7 +1062,7 @@ if __name__ == "__main__":
 
                         st.markdown("---")
 
-
+            comment_area()
 
         elif select_tab == '🔫 第二章：枪械系统介绍':
 
@@ -1015,8 +1113,7 @@ if __name__ == "__main__":
 
                             st.markdown("---")
 
-
-
+            comment_area()
 
         elif select_tab == '🦸 第三章：英雄角色介绍':
 
@@ -1167,7 +1264,7 @@ if __name__ == "__main__":
                                         st.session_state.current = hero_name
 
                                     st.markdown("---")
-
+            comment_area()
 
         elif select_tab == '🗺️ 第四章：地图基本介绍':
 
@@ -1231,7 +1328,7 @@ if __name__ == "__main__":
 
                         st.markdown("---")
 
-
+            comment_area()
         elif select_tab == '⚡ 第五章：英雄进阶技巧':
 
             st.session_state.radio_index = 7
@@ -1906,7 +2003,7 @@ if __name__ == "__main__":
                     <p>• 加强团队配合</p>
                     </div>
                     """, unsafe_allow_html=True)
-
+            comment_area()
 
 
         elif select_tab == '🏆 第六章：职业比赛学习':
@@ -2049,9 +2146,7 @@ if __name__ == "__main__":
 
                         """, unsafe_allow_html=True)
 
-
-
-
+            comment_area()
 
 
         elif select_tab == '🚀 第七章：游戏进阶技巧':
@@ -2231,8 +2326,7 @@ if __name__ == "__main__":
                 for tech in techniques:
                     st.markdown(f"• **{tech}**")
 
-
-
+            comment_area()
         elif select_tab == '📊 附录：职业选手数据':
 
             st.session_state.radio_index = 10
