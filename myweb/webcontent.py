@@ -2394,9 +2394,9 @@ if __name__ == "__main__":
                 st.write(f"**最佳爆头率:** {df['Headshot'].max()}% ({df.loc[df['Headshot'].idxmax(), '选手']})")
 
 
-            # except Exception as e:
-            #
-            #     st.error(f"数据加载失败: {e}")
+# except Exception as e:
+#
+#     st.error(f"数据加载失败: {e}")
             #
             #     st.info("请确保数据文件路径正确，且格式符合要求")
 
