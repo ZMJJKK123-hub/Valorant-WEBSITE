@@ -353,57 +353,59 @@ def comment_area():
             st.rerun()
 
     # 显示评论
-    # comments = st.session_state.comments.get(select_tab, [])
-    #
-    #
-    #
-    # st.markdown("#### 📝 历史评论")
-    # if not comments:
-    #     st.info("暂无评论，快来留下第一条评论吧！")
-    #     return
-    #
-    # for idx, comment in enumerate(comments):
-    #     # 为每个评论创建唯一key
-    #     expander_key = f"expander_{comment['id']}_{st.session_state.form_counter}"
-    #
-    #     with st.expander(f"💬 {comment['user']} - {comment['time']}", expanded=False, key=expander_key):
-    #
-    #         # 显示图片（如果有）
-    #         if comment.get('image'):
-    #             image_path = os.path.join("comment_images", comment['image'])
-    #             if os.path.exists(image_path):
-    #                 st.image(image_path, use_container_width=True, caption="用户上传的图片")
-    #             else:
-    #                 st.warning("图片文件不存在")
-    #
-    #         # 显示文本评论
-    #         if comment['text']:
-    #             st.write(comment['text'])
-    #         elif comment.get('image'):
-    #             st.write("【图片评论】")
-    #         else:
-    #             st.write("【空评论】")
-    #
-    #         # 删除按钮
-    #         delete_key = f"delete_{comment['id']}_{st.session_state.form_counter}"
-    #         if st.button("🗑️ 删除", key=delete_key):
-    #             # 只有评论作者或管理员可以删除
-    #             if (st.session_state.logged_in and
-    #                     st.session_state.current_user and
-    #                     (st.session_state.current_user == comment['user'] or
-    #                      st.session_state.current_user == 'admin')):
-    #
-    #                 # 删除关联的图片文件
-    #                 if comment.get('image'):
-    #                     image_path = os.path.join("comment_images", comment['image'])
-    #                     if os.path.exists(image_path):
-    #                         os.remove(image_path)
-    #
-    #                 # 删除评论
-    #                 st.session_state.comments[select_tab].pop(idx)
-    #                 st.rerun()
-    #             else:
-    #                 st.warning("您没有删除此评论的权限")
+    comments = st.session_state.comments.get(select_tab, [])
+
+
+
+    st.markdown("#### 📝 历史评论")
+    if not comments:
+        st.info("暂无评论，快来留下第一条评论吧！")
+        return
+
+    for idx, comment in enumerate(comments):
+        # 为每个评论创建唯一key
+        expander_key = f"expander_{comment['id']}_{st.session_state.form_counter}"
+
+        with st.expander(f"💬 {comment['user']} - {comment['time']}", expanded=False):
+
+            # 显示图片（如果有）
+            if comment.get('image'):
+                image_path = os.path.join("comment_images", comment['image'])
+                if os.path.exists(image_path):
+                    st.image(image_path, use_container_width=True, caption="用户上传的图片")
+                else:
+                    st.warning("图片文件不存在")
+
+            # 显示文本评论
+            if comment['text']:
+                st.write(comment['text'])
+            elif comment.get('image'):
+                st.write("【图片评论】")
+            else:
+                st.write("【空评论】")
+
+            # 删除按钮
+            delete_key = f"delete_{comment['id']}_{st.session_state.form_counter}"
+            if st.button("🗑️ 删除", key=delete_key):
+                # 只有评论作者或管理员可以删除
+                if (
+                        st.session_state.logged_in and
+                        st.session_state.current_user and
+                        (st.session_state.current_user == comment['user'] or
+                         st.session_state.current_user == 'admin')
+                ):
+
+                    # 删除关联的图片文件
+                    if comment.get('image'):
+                        image_path = os.path.join("comment_images", comment['image'])
+                        if os.path.exists(image_path):
+                            os.remove(image_path)
+
+                    # 删除评论
+                    st.session_state.comments[select_tab].pop(idx)
+                    st.rerun()
+                else:
+                    st.warning("您没有删除此评论的权限")
 
 if __name__ == "__main__":
 
@@ -418,7 +420,7 @@ if __name__ == "__main__":
         st.session_state.logged_in = False
 
     if "current_user" not in st.session_state:
-        st.session_state.current_user=None
+        st.session_state.current_user='匿名用户'
 
     if not st.session_state.logged_in:
         register_user()
@@ -428,6 +430,9 @@ if __name__ == "__main__":
             if st.button("退出账号",key=f'btn_{st.session_state.current_user}'):
                 st.session_state.logged_in = False
                 del st.session_state.current_user
+
+    if not st.session_state.logged_in:
+        st.write("请先登录！")
 
     if not os.path.exists("comment_images"):
         os.makedirs("comment_images")
