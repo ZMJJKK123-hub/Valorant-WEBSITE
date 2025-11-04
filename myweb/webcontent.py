@@ -308,11 +308,13 @@ def comment_area():
                 "文件类型": uploaded_file.type,
                 "文件大小": f"{uploaded_file.size / 1024:.2f} KB"
             }
-            st.write("已选择文件：", file_details)
+            # st.write("已选择文件：", file_details)
 
             # 如果是图片，显示预览
-            if uploaded_file.type.startswith('image/'):
-                st.image(uploaded_file, caption="图片预览", width=300)
+            # if uploaded_file.type.startswith('image/'):
+            #     st.image(uploaded_file, caption="图片预览", width=300)
+            #     time.sleep(5)
+
         submit_button = st.form_submit_button("提交评论")
         if submit_button and (comment or uploaded_file):
             # 写出用户名
@@ -431,8 +433,7 @@ if __name__ == "__main__":
                 st.session_state.logged_in = False
                 del st.session_state.current_user
 
-    if not st.session_state.logged_in:
-        st.write("请先登录！")
+
 
     if not os.path.exists("comment_images"):
         os.makedirs("comment_images")
@@ -464,6 +465,9 @@ if __name__ == "__main__":
         }
 
     if st.session_state.current == 'home':
+
+        if not st.session_state.logged_in:
+            st.write("请先登录！")
 
         with st.sidebar:
             st.title='零基础开始的导航菜单'
